@@ -1,0 +1,24 @@
+name: prueba_ar
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mobile_scanner: 6.0.7
+  shared_preferences: ^2.5.3
+  
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  ar_location_viewer: ^3.0.0
+  ar_flutter_plugin_updated: ^0.0.1
+  geolocator: ^13.0.1
+flutter:
+  uses-material-design: true
