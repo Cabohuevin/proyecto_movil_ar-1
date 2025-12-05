@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
 import 'package:ar_flutter_plugin_updated/ar_flutter_plugin.dart';
 import 'package:ar_flutter_plugin_updated/managers/ar_object_manager.dart';
 import 'package:ar_flutter_plugin_updated/managers/ar_session_manager.dart';
 import 'package:ar_flutter_plugin_updated/models/ar_node.dart';
 import 'package:ar_flutter_plugin_updated/datatypes/node_types.dart';
-import '../services/product_api_service.dart';
 import '../models/product.dart';
 
 class ARQRScannerScreen extends StatefulWidget {
@@ -17,307 +15,14 @@ class ARQRScannerScreen extends StatefulWidget {
 }
 
 class _ARQRScannerScreenState extends State<ARQRScannerScreen> {
-  String? scannedData;
-  Product? scannedProduct;
-  bool isLoadingProduct = false;
-  final ProductApiService _apiService = ProductApiService();
+  static const String _defaultModelData =
+      'uri: "https://nypecsyxpwpvwlboguut.supabase.co/storage/v1/object/public/models/model1.glb"';
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.qr_code_scanner, size: 24),
-            const SizedBox(width: 8),
-            const Text("Escanear QR de Producto"),
-          ],
-        ),
-      ),
-      body: scannedData == null
-          ? Stack(
-              children: [
-                MobileScanner(
-                  onDetect: (barcodeCapture) async {
-                    final barcode = barcodeCapture.barcodes.first;
-                    final rawValue = barcode.rawValue;
-                    if (rawValue == null) return;
-                    final decoded = Uri.decodeFull(rawValue);
-                    debugPrint("QR escaneado: $decoded");
-
-                    // If QR contains uri:, use it directly
-                    if (decoded.contains('uri:')) {
-                      setState(() {
-                        scannedData = decoded;
-                        scannedProduct = null;
-                      });
-                    } else {
-                      // Try to fetch product by code from API
-                      setState(() {
-                        isLoadingProduct = true;
-                      });
-
-                      try {
-                        final product = await _apiService.getProductByCode(decoded);
-                        
-                        if (product != null && product.uriModelo3D != null) {
-                          setState(() {
-                            scannedProduct = product;
-                            scannedData = 'uri: "${product.uriModelo3D}"';
-                            isLoadingProduct = false;
-                          });
-                        } else if (product != null) {
-                          // Product found but no 3D model
-                          setState(() {
-                            isLoadingProduct = false;
-                          });
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    const Icon(Icons.info_outline, color: Colors.white),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        "Producto encontrado: ${product.nombre ?? decoded}\nNo tiene modelo 3D disponible",
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: Colors.orange,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                duration: const Duration(seconds: 4),
-                              ),
-                            );
-                          }
-                        } else {
-                          // Product not found
-                          setState(() {
-                            isLoadingProduct = false;
-                          });
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Row(
-                                  children: [
-                                    Icon(Icons.error_outline, color: Colors.white),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        "Producto no encontrado. El QR debe contener 'uri:' o un código de producto válido.",
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: Colors.red,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                duration: const Duration(seconds: 4),
-                              ),
-                            );
-                          }
-                        }
-                      } catch (e) {
-                        setState(() {
-                          isLoadingProduct = false;
-                        });
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Row(
-                                children: [
-                                  const Icon(Icons.error_outline, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      "Error al buscar producto: ${e.toString()}",
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              backgroundColor: Colors.red,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          );
-                        }
-                      }
-                    }
-                  },
-                ),
-                if (isLoadingProduct)
-                  Container(
-                    color: Colors.black.withOpacity(0.5),
-                    child: const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(color: Colors.white),
-                          SizedBox(height: 16),
-                          Text(
-                            "Buscando producto...",
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                // Overlay con instrucciones
-                Positioned(
-                  top: 20,
-                  left: 20,
-                  right: 20,
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.qr_code_scanner, color: Colors.white),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            "Apunta la cámara al código QR del producto",
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Marco de escaneo visual
-                Center(
-                  child: Container(
-                    width: 250,
-                    height: 250,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Theme.of(context).primaryColor,
-                        width: 3,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Stack(
-                      children: [
-                        // Esquinas decorativas
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              border: Border(
-                                top: BorderSide(
-                                  color: Theme.of(context).primaryColor,
-                                  width: 4,
-                                ),
-                                left: BorderSide(
-                                  color: Theme.of(context).primaryColor,
-                                  width: 4,
-                                ),
-                              ),
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(20),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              border: Border(
-                                top: BorderSide(
-                                  color: Theme.of(context).primaryColor,
-                                  width: 4,
-                                ),
-                                right: BorderSide(
-                                  color: Theme.of(context).primaryColor,
-                                  width: 4,
-                                ),
-                              ),
-                              borderRadius: const BorderRadius.only(
-                                topRight: Radius.circular(20),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: Theme.of(context).primaryColor,
-                                  width: 4,
-                                ),
-                                left: BorderSide(
-                                  color: Theme.of(context).primaryColor,
-                                  width: 4,
-                                ),
-                              ),
-                              borderRadius: const BorderRadius.only(
-                                bottomLeft: Radius.circular(20),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: Theme.of(context).primaryColor,
-                                  width: 4,
-                                ),
-                                right: BorderSide(
-                                  color: Theme.of(context).primaryColor,
-                                  width: 4,
-                                ),
-                              ),
-                              borderRadius: const BorderRadius.only(
-                                bottomRight: Radius.circular(20),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : scannedData != null
-              ? ARModelViewer(
-                  data: scannedData!,
-                  product: scannedProduct,
-                )
-              : const Center(child: Text('Error: Datos no disponibles')),
+    return const ARModelViewer(
+      data: _defaultModelData,
+      product: null,
     );
   }
 }
@@ -338,10 +43,120 @@ class ARModelViewer extends StatefulWidget {
 class _ARModelViewerState extends State<ARModelViewer> {
   ARSessionManager? arSessionManager;
   ARObjectManager? arObjectManager;
+  ARNode? _activeNode;
+  String? _activeCategory;
+
+  static const String _fallbackModelUri =
+      'https://nypecsyxpwpvwlboguut.supabase.co/storage/v1/object/public/models/model1.glb';
+
+  final List<String> _modelCategories = const [
+    'Antibióticos',
+    'Solubles',
+    'Analgésicos',
+    'Vitaminas',
+    'Antiinflamatorios',
+  ];
 
   String extractUri(String data) {
     final uriMatch = RegExp(r'uri:\s*"(.+?)"').firstMatch(data);
     return uriMatch?.group(1) ?? '';
+  }
+
+  Future<void> _placeModel(String category, {String? uri}) async {
+    if (arObjectManager == null) return;
+
+    final resolvedUri = (uri != null && uri.isNotEmpty)
+        ? uri
+        : (extractUri(widget.data).isNotEmpty
+            ? extractUri(widget.data)
+            : _fallbackModelUri);
+
+    if (_activeNode != null) {
+      await arObjectManager!.removeNode(_activeNode!);
+    }
+
+    final node = ARNode(
+      name: 'modelo-$category',
+      type: NodeType.webGLB,
+      uri: resolvedUri,
+      position: vector.Vector3(0.0, 0.0, -1.0), // Frente a la cámara
+      scale: vector.Vector3(0.05, 0.05, 0.05),
+    );
+
+    final added = await arObjectManager!.addNode(node);
+    if (added == true) {
+      setState(() {
+        _activeNode = node;
+        _activeCategory = category;
+      });
+    }
+  }
+
+  Widget _buildCategorySelector() {
+    return Container(
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 110),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.teal.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.view_list, color: Colors.teal, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                "Ordenar estantería",
+                style: TextStyle(
+                  color: Colors.teal.shade800,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _modelCategories.map((category) {
+              final isActive = _activeCategory == category;
+              return ChoiceChip(
+                label: Text(category),
+                selected: isActive,
+                onSelected: (_) => _placeModel(category, uri: _fallbackModelUri),
+                selectedColor: Colors.teal.shade100,
+                backgroundColor: Colors.grey.shade200,
+                labelStyle: TextStyle(
+                  color: isActive ? Colors.teal.shade800 : Colors.grey.shade800,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(
+                    color: isActive ? Colors.teal : Colors.grey.shade300,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -357,12 +172,33 @@ class _ARModelViewerState extends State<ARModelViewer> {
           ],
         ),
         actions: [
+          PopupMenuButton<String>(
+            tooltip: "Ordenar estantería",
+            icon: const Icon(Icons.view_list),
+            onSelected: (value) {
+              _placeModel(value, uri: _fallbackModelUri);
+            },
+            itemBuilder: (context) => _modelCategories
+                .map(
+                  (category) => PopupMenuItem<String>(
+                    value: category,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.medication_liquid, size: 20),
+                        const SizedBox(width: 10),
+                        Text(category),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
               Navigator.pop(context);
             },
-            tooltip: "Escanear otro QR",
+            tooltip: "Volver",
           ),
         ],
       ),
@@ -383,15 +219,17 @@ class _ARModelViewerState extends State<ARModelViewer> {
 
               arObjectManager!.onInitialize();
 
-              final node = ARNode(
-                type: NodeType.webGLB,
-                uri: extractUri(widget.data),
-                position: vector.Vector3(0.0, 0.0, -1.0), // Fijo frente a cámara
-                scale: vector.Vector3(0.05, 0.05, 0.05),
-              );
-
-              await arObjectManager!.addNode(node);
+              final initialUri =
+                  extractUri(widget.data).isNotEmpty ? extractUri(widget.data) : _fallbackModelUri;
+              await _placeModel(_activeCategory ?? 'Modelo', uri: initialUri);
             },
+          ),
+          // Selector rápido para tipos de medicamento
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildCategorySelector(),
           ),
           // Indicador de carga/éxito
           Positioned(
@@ -435,7 +273,8 @@ class _ARModelViewerState extends State<ARModelViewer> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.product?.nombre ?? "Producto cargado",
+                          widget.product?.nombre ??
+                              (_activeCategory != null ? "Modelo: $_activeCategory" : "Producto cargado"),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -476,7 +315,7 @@ class _ARModelViewerState extends State<ARModelViewer> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      "Apunta la cámara a una superficie plana para visualizar el producto",
+                      "Apunta la cámara a una superficie plana para visualizar el modelo",
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: 13,

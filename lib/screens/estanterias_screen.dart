@@ -787,24 +787,10 @@ class _EstanteriasScreenState extends State<EstanteriasScreen> {
               const SizedBox(height: 10),
             ],
             
-            // Botón principal según si tiene ubicación o no
+            // Botón de productos siempre visible
             SizedBox(
               width: double.infinity,
-              child: hasLocation
-                  ? ElevatedButton.icon(
-                      onPressed: () {
-                        _navigateToAR(estanteria);
-                      },
-                      icon: const Icon(Icons.navigation, size: 16),
-                      label: const Text('Buscar estantería', style: TextStyle(fontSize: 12)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade50,
-                        foregroundColor: Colors.green.shade700,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        elevation: 0,
-                      ),
-                    )
-                  : ElevatedButton.icon(
+              child: ElevatedButton.icon(
                       onPressed: () {
                         _showProductosEstanteria(estanteria);
                       },
@@ -820,11 +806,71 @@ class _EstanteriasScreenState extends State<EstanteriasScreen> {
             ),
             const SizedBox(height: 8),
             
-            // Botón secundario para guardar ubicación si no tiene
-            if (!hasLocation) ...[
+            // Botón desplegable para ubicación GPS o botón para guardar
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
+              child: hasLocation
+                  ? PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'visualizar') {
+                          _navigateToAR(estanteria);
+                        } else if (value == 'cambiar') {
+                          _saveCoordinates(estanteria);
+                        }
+                      },
+                      offset: const Offset(0, 40),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      itemBuilder: (context) => [
+                        PopupMenuItem<String>(
+                          value: 'visualizar',
+                          child: Row(
+                            children: [
+                              Icon(Icons.navigation, size: 20, color: Colors.green.shade700),
+                              const SizedBox(width: 12),
+                              const Text('Visualizar estantería'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'cambiar',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_location_alt, size: 20, color: Colors.orange.shade700),
+                              const SizedBox(width: 12),
+                              const Text('Cambiar de ubicación'),
+                            ],
+                          ),
+                        ),
+                      ],
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade300),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.location_on, size: 16, color: Colors.green.shade700),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Ubicación GPS',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green.shade700,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(Icons.arrow_drop_down, size: 20, color: Colors.green.shade700),
+                          ],
+                        ),
+                      ),
+                    )
+                  : OutlinedButton.icon(
                   onPressed: () {
                     _saveCoordinates(estanteria);
                   },
@@ -838,7 +884,6 @@ class _EstanteriasScreenState extends State<EstanteriasScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-            ],
             
             // Dimensiones - más compacto
             if (estanteria.numeroFilas != null || estanteria.numeroColumnas != null || estanteria.numeroNiveles != null) ...[
